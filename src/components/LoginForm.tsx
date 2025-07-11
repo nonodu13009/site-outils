@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmail, signUpWithEmail, AuthError } from '@/lib/auth';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 
 interface LoginFormProps {
   mode?: 'login' | 'signup';
@@ -11,6 +13,7 @@ interface LoginFormProps {
 export const LoginForm = ({ mode = 'login' }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -21,6 +24,13 @@ export const LoginForm = ({ mode = 'login' }: LoginFormProps) => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+
+    // Vérification du domaine email
+    if (!email.endsWith('@allianz-nogaro.fr')) {
+      setError('Seuls les emails @allianz-nogaro.fr sont autorisés.');
+      setLoading(false);
+      return;
+    }
 
     try {
       if (mode === 'login') {
@@ -58,34 +68,14 @@ export const LoginForm = ({ mode = 'login' }: LoginFormProps) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {mode === 'login' ? 'Connexion' : 'Créer un compte'}
+            Connexion
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            {mode === 'login' ? (
-              <>
-                Ou{' '}
-                <button
-                  onClick={() => router.push('/signup')}
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
-                  créer un nouveau compte
-                </button>
-              </>
-            ) : (
-              <>
-                Ou{' '}
-                <button
-                  onClick={() => router.push('/login')}
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
-                  se connecter à un compte existant
-                </button>
-              </>
-            )}
+          <p className="mt-2 text-center text-sm text-gray-500">
+            Connexion possible uniquement si vous avez une adresse mail : <span className="font-medium text-blue-600">allianz-nogaro.fr</span>
           </p>
         </div>
         
@@ -107,21 +97,30 @@ export const LoginForm = ({ mode = 'login' }: LoginFormProps) => {
                 placeholder="Adresse email"
               />
             </div>
-            <div>
+            <div className="relative">
               <label htmlFor="password" className="sr-only">
                 Mot de passe
               </label>
               <input
                 id="password"
                 name="password"
-                type="password"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                type={showPassword ? 'text' : 'password'}
+                autoComplete={'current-password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm pr-10"
                 placeholder="Mot de passe"
               />
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+              </button>
             </div>
           </div>
 
@@ -141,15 +140,15 @@ export const LoginForm = ({ mode = 'login' }: LoginFormProps) => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
             >
               {loading ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {mode === 'login' ? 'Connexion...' : 'Création...'}
+                  {'Connexion...'}
                 </div>
               ) : (
-                mode === 'login' ? 'Se connecter' : 'Créer un compte'
+                'Se connecter'
               )}
             </button>
           </div>
