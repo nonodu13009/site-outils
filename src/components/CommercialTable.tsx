@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import styles from './CommercialTable.module.css';
 import { FaBolt, FaCar, FaHeartbeat, FaStar } from 'react-icons/fa';
 import { PremiumModal } from './PremiumModal';
@@ -67,14 +67,19 @@ const produitsAN = [
   { value: 'vie_pu', label: 'Vie PU' },
 ];
 
+// --- Début du composant tableau commercial, version "souligné" ---
+
 export function CommercialTable({ data, loading = false }: CommercialTableProps) {
   const [sortField, setSortField] = useState<keyof CommercialData>('date_saisie');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProcess, setSelectedProcess] = useState<string | null>(null);
-  const [form, setForm] = useState<any>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Remplacement de "any" par un type plus précis pour le formulaire
+  const [form, setForm] = useState<Partial<CommercialData>>({});
+  // Suppression de isSubmitting inutilisé (voir lint)
+  // const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Gestion du tri avec effet "souligné" sur l'en-tête actif
   const handleSort = (field: keyof CommercialData) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -130,13 +135,12 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
       process,
       nom_client: '',
       notes: '',
-      // Champs AN
       num_contrat: '',
       date_effet: '',
       produit: '',
       compagnie: '',
-      ca_vl: '',
-      comm_potentielle: '',
+      ca_vl: 0,
+      comm_potentielle: 0,
     });
     setModalOpen(true);
   };
@@ -145,17 +149,22 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
     setSelectedProcess(null);
   };
 
-  // Gestion des champs
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Gestion des champs (souligné)
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setForm((prev: any) => ({ ...prev, [name]: value }));
+    setForm((prev: typeof form) => ({
+      ...prev,
+      [name]: name === 'ca_vl' || name === 'comm_potentielle' ? Number(value) : value,
+    }));
   };
 
   // Calcul dynamique commission potentielle (pour AN)
   const computeCommission = () => {
     if (selectedProcess !== 'AN') return '';
     const produit = form.produit;
-    const ca = parseInt(form.ca_vl, 10) || 0;
+    const ca = typeof form.ca_vl === 'number' ? form.ca_vl : 0;
     switch (produit) {
       case 'auto':
       case 'moto':
@@ -281,7 +290,7 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                   <input
                     type="text"
                     name="num_contrat"
-                    value={form.num_contrat}
+                    value={form.num_contrat ?? ''}
                     onChange={handleChange}
                     placeholder="Numéro de contrat"
                     className={styles.input}
@@ -289,11 +298,11 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                   />
                 </div>
                 <div className={styles.PremiumModal_formGroup}>
-                  <label className={styles.label}>Date d'effet</label>
+                  <label className={styles.label}>Date d&apos;effet</label>
                   <input
                     type="date"
                     name="date_effet"
-                    value={form.date_effet}
+                    value={form.date_effet ?? ''}
                     onChange={handleChange}
                     className={styles.input}
                     required
@@ -319,7 +328,7 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                   <input
                     type="text"
                     name="compagnie"
-                    value={form.compagnie}
+                    value={form.compagnie ?? ''}
                     onChange={handleChange}
                     placeholder="Compagnie (à connecter à Firestore)"
                     className={styles.input}
@@ -331,7 +340,7 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                   <input
                     type="number"
                     name="ca_vl"
-                    value={form.ca_vl}
+                    value={form.ca_vl !== undefined ? String(form.ca_vl) : ''}
                     onChange={handleChange}
                     placeholder="Montant en euros"
                     className={styles.input}
@@ -344,7 +353,7 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                   <input
                     type="text"
                     name="comm_potentielle"
-                    value={computeCommission()}
+                    value={computeCommission().toString()}
                     className={styles.input + ' ' + styles.inputDisabled}
                     disabled
                   />
@@ -357,12 +366,10 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                 type="button"
                 className={styles.cancelBtn}
                 onClick={handleCloseModal}
-                disabled={isSubmitting}
               >Annuler</button>
               <button
                 type="submit"
                 className={styles.validateBtn}
-                disabled={isSubmitting}
               >Valider</button>
             </div>
           </form>
