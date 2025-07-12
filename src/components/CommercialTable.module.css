@@ -322,3 +322,21 @@
 .PremiumModal_formGroup {
   margin-bottom: 1.1rem;
 } 
+
+.eyeBtn {
+  background: none;
+  border: none;
+  padding: 0.3rem 0.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #007aff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  outline: none;
+}
+.eyeBtn:hover, .eyeBtn:focus {
+  background: #eaf4ff;
+  color: #005ecb;
+} 

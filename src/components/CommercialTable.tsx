@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import styles from './CommercialTable.module.css';
-import { FaBolt, FaCar, FaHeartbeat, FaStar } from 'react-icons/fa';
+import { FaBolt, FaCar, FaHeartbeat, FaStar, FaRegEye } from 'react-icons/fa';
 import { PremiumModal } from './PremiumModal';
+import { useCompagnies } from '@/hooks/useCompagnies';
 
 export interface CommercialData {
   id: string;
@@ -67,7 +68,30 @@ const produitsAN = [
   { value: 'vie_pu', label: 'Vie PU' },
 ];
 
+// Mapping process -> couleur
+const processColors: Record<string, string> = {
+  'M+3': '#007aff',
+  'Préterme Auto': '#34c759',
+  'Préterme Ird': '#ff9500',
+  'AN': '#af52de',
+};
+
 // --- Début du composant tableau commercial, version "souligné" ---
+
+// Fonction pour mettre en Title Case (y compris noms composés)
+function formatClientName(name: string): string {
+  return name
+    .split(' ')
+    .map(part =>
+      part
+        .split('-')
+        .map(
+          seg => seg.charAt(0).toUpperCase() + seg.slice(1).toLowerCase()
+        )
+        .join('-')
+    )
+    .join(' ');
+}
 
 export function CommercialTable({ data, loading = false }: CommercialTableProps) {
   const [sortField, setSortField] = useState<keyof CommercialData>('date_saisie');
@@ -76,8 +100,12 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
   const [selectedProcess, setSelectedProcess] = useState<string | null>(null);
   // Remplacement de "any" par un type plus précis pour le formulaire
   const [form, setForm] = useState<Partial<CommercialData>>({});
+  const [localRows, setLocalRows] = useState<CommercialData[]>([]);
   // Suppression de isSubmitting inutilisé (voir lint)
   // const [isSubmitting, setIsSubmitting] = useState(false);
+  const [noteToRead, setNoteToRead] = useState<string | null>(null);
+  const [readNoteOpen, setReadNoteOpen] = useState(false);
+  const { compagnies, loading: loadingCompagnies, error: errorCompagnies } = useCompagnies();
 
   // Gestion du tri avec effet "souligné" sur l'en-tête actif
   const handleSort = (field: keyof CommercialData) => {
@@ -102,23 +130,6 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('fr-FR');
   };
-
-  const sortedData = [...data].sort((a, b) => {
-    const aValue = a[sortField];
-    const bValue = b[sortField];
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortDirection === 'asc' 
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-    
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-    }
-    
-    return 0;
-  });
 
   // Boutons flashy à afficher au-dessus du tableau
   const actionButtons = [
@@ -190,6 +201,31 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
     }
   };
 
+  // Ajout local d'un contrat à la validation de la modale
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Générer un id unique (timestamp + random)
+    const id = Date.now().toString() + Math.floor(Math.random() * 10000);
+    const newRow: CommercialData = {
+      id,
+      date_saisie: form.date_saisie || new Date().toISOString().slice(0, 10),
+      nom_client: form.nom_client ? formatClientName(form.nom_client) : '',
+      num_contrat: form.num_contrat || '',
+      date_effet: form.date_effet || '',
+      process: selectedProcess || '',
+      produit: form.produit || '',
+      compagnie: form.compagnie || '',
+      ca_vl: typeof form.ca_vl === 'number' ? form.ca_vl : 0,
+      ca_mensuel: 0,
+      comm_potentielle: Number(computeCommission()) || 0,
+      notes: form.notes || '',
+    };
+    setLocalRows((prev) => [newRow, ...prev]);
+    setModalOpen(false);
+    setSelectedProcess(null);
+    setForm({});
+  };
+
   if (loading) {
     return (
       <div className={styles.container}>
@@ -200,6 +236,9 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
       </div>
     );
   }
+
+  // On affiche les données locales si présentes, sinon les données props
+  const displayData = localRows.length > 0 ? localRows : data;
 
   return (
     <div className={styles.container}>
@@ -232,7 +271,7 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
         {selectedProcess && (
           <form
             style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}
-            onSubmit={e => { e.preventDefault(); /* à compléter */ }}
+            onSubmit={handleSubmit}
             autoComplete="off"
           >
             {/* Date de saisie (grisée) */}
@@ -268,18 +307,6 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                 placeholder="Saisir le nom du client"
                 className={styles.input}
                 required
-              />
-            </div>
-            {/* Note (facultatif) */}
-            <div className={styles.PremiumModal_formGroup}>
-              <label className={styles.label}>Note (optionnelle)</label>
-              <textarea
-                name="notes"
-                value={form.notes}
-                onChange={handleChange}
-                placeholder="Ajouter une note..."
-                className={styles.textarea}
-                rows={2}
               />
             </div>
             {/* Champs spécifiques AN */}
@@ -325,15 +352,24 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                 </div>
                 <div className={styles.PremiumModal_formGroup}>
                   <label className={styles.label}>Compagnie</label>
-                  <input
-                    type="text"
-                    name="compagnie"
-                    value={form.compagnie ?? ''}
-                    onChange={handleChange}
-                    placeholder="Compagnie (à connecter à Firestore)"
-                    className={styles.input}
-                    required
-                  />
+                  {loadingCompagnies ? (
+                    <div style={{color:'#b0b0b8',fontSize:'1.05rem',padding:'0.7rem 0'}}>Chargement...</div>
+                  ) : errorCompagnies ? (
+                    <div style={{color:'#ff3b30',fontSize:'1.05rem',padding:'0.7rem 0'}}>Erreur lors du chargement des compagnies</div>
+                  ) : (
+                    <select
+                      name="compagnie"
+                      value={form.compagnie ?? ''}
+                      onChange={handleChange}
+                      className={styles.input}
+                      required
+                    >
+                      <option value="">Sélectionner une compagnie</option>
+                      {compagnies.map(c => (
+                        <option key={c.id} value={c.nom}>{c.nom}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className={styles.PremiumModal_formGroup}>
                   <label className={styles.label}>CA (en €)</label>
@@ -348,18 +384,20 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                     required
                   />
                 </div>
-                <div className={styles.PremiumModal_formGroup}>
-                  <label className={styles.label}>Commission potentielle</label>
-                  <input
-                    type="text"
-                    name="comm_potentielle"
-                    value={computeCommission().toString()}
-                    className={styles.input + ' ' + styles.inputDisabled}
-                    disabled
-                  />
-                </div>
               </>
             )}
+            {/* Note (facultatif) - toujours en dernier */}
+            <div className={styles.PremiumModal_formGroup}>
+              <label className={styles.label}>Note (optionnelle)</label>
+              <textarea
+                name="notes"
+                value={form.notes}
+                onChange={handleChange}
+                placeholder="Ajouter une note..."
+                className={styles.textarea}
+                rows={2}
+              />
+            </div>
             {/* Boutons Valider / Annuler */}
             <div style={{ display: 'flex', gap: '1.2rem', justifyContent: 'flex-end', marginTop: '1.2rem' }}>
               <button
@@ -376,6 +414,16 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
         )}
       </PremiumModal>
       
+      <PremiumModal
+        open={readNoteOpen}
+        onClose={() => setReadNoteOpen(false)}
+        title="Note"
+      >
+        <div style={{whiteSpace:'pre-line',fontSize:'1.08rem',color:'#1d1d1f',maxHeight:'40vh',overflowY:'auto',padding:'0.5rem 0'}}>
+          {noteToRead}
+        </div>
+      </PremiumModal>
+
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
@@ -397,7 +445,7 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
             </tr>
           </thead>
           <tbody>
-            {sortedData.length === 0 ? (
+            {displayData.length === 0 ? (
               <tr>
                 <td colSpan={columnOrder.length} className={styles.emptyState}>
                   <div className={styles.emptyContent}>
@@ -409,16 +457,47 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                 </td>
               </tr>
             ) : (
-              sortedData.map((row) => (
+              [...displayData].sort((a, b) => {
+                const aValue = a[sortField];
+                const bValue = b[sortField];
+                if (typeof aValue === 'string' && typeof bValue === 'string') {
+                  return sortDirection === 'asc' 
+                    ? aValue.localeCompare(bValue)
+                    : bValue.localeCompare(aValue);
+                }
+                if (typeof aValue === 'number' && typeof bValue === 'number') {
+                  return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+                }
+                return 0;
+              }).map((row) => (
                 <tr key={row.id} className={styles.row}>
                   {columnOrder.map((col) => (
                     <td key={col} className={styles.td}>
                       {col === 'date_saisie' || col === 'date_effet'
                         ? formatDate(row[col] as string)
+                        : (col === 'ca_vl' || col === 'comm_potentielle') &&
+                          (row.process === 'M+3' || row.process === 'Préterme Auto' || row.process === 'Préterme Ird')
+                        ? <span style={{color:'#b0b0b8'}}>-</span>
                         : col === 'ca_vl' || col === 'comm_potentielle'
                         ? formatCurrency(row[col] as number)
                         : col === 'process'
-                        ? <span className={styles.processBadge}>{row[col] || '-'}</span>
+                        ? <span
+                            className={styles.processBadge}
+                            style={{ background: processColors[row.process] || '#e5e5ea', color: '#fff' }}
+                          >
+                            {row[col] || '-'}
+                          </span>
+                        : col === 'notes'
+                        ? row.notes && row.notes.trim() !== ''
+                          ? <button
+                              type="button"
+                              className={styles.eyeBtn}
+                              aria-label="Lire la note"
+                              onClick={() => { setNoteToRead(row.notes || ''); setReadNoteOpen(true); }}
+                            >
+                              <FaRegEye style={{fontSize:'1.2em'}} />
+                            </button>
+                          : <span style={{color:'#b0b0b8'}}>-</span>
                         : row[col] || '-'}
                     </td>
                   ))}
