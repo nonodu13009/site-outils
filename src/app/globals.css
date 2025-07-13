@@ -36,3 +36,8 @@ body {
     opacity: 1;
   }
 }
+
+::-webkit-input-placeholder { color: #b0b0b8; opacity: 1; }
+::-moz-placeholder { color: #b0b0b8; opacity: 1; }
+:-ms-input-placeholder { color: #b0b0b8; opacity: 1; }
+::placeholder { color: #b0b0b8; opacity: 1; }
