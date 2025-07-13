@@ -1,28 +1,23 @@
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export interface CommercialProduitCommission {
   id: string;
-  produit: string;
-  label: string;
-  type: 'fixe' | 'variable';
-  valeur: number;
-  boost?: {
-    type: 'fixe' | 'variable';
-    valeur: number;
-    periode: {
-      debut: Date;
-      fin: Date;
-    };
-  };
-  duree?: {
-    debut: Date;
-    fin: Date;
+  nom: string;
+  description: string;
+  type_commission: 'fixe' | 'variable' | 'progressive';
+  commission: {
+    montant?: number;
+    pourcentage?: number;
+    base?: number;
+    tranche_supplementaire?: number;
+    seuil_tranche?: number;
+    seuil_debut?: number;
   };
   actif: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  date_creation: Date;
+  date_modification: Date;
 }
 
 export function useCommercialProduitCommission() {
@@ -31,56 +26,65 @@ export function useCommercialProduitCommission() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCommissions = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const snap = await getDocs(query(collection(db, 'commercial_produit_commission'), orderBy('produit')));
-        const commissionsData = snap.docs.map(doc => ({
+    // Écoute en temps réel avec onSnapshot
+    const q = query(collection(db, 'produits_commissions'), orderBy('nom'));
+    
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const commissionsData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+          date_creation: doc.data().date_creation?.toDate() || new Date(),
+          date_modification: doc.data().date_modification?.toDate() || new Date(),
         })) as CommercialProduitCommission[];
+        
         setCommissions(commissionsData);
-      } catch (e) {
+        setLoading(false);
+        setError(null);
+      },
+      (error) => {
+        console.error('Erreur onSnapshot:', error);
         setError('Erreur lors du chargement des commissions');
-        console.error('Erreur fetchCommissions:', e);
-      } finally {
         setLoading(false);
       }
-    };
-    fetchCommissions();
+    );
+
+    // Cleanup function pour éviter les fuites mémoire
+    return () => unsubscribe();
   }, []);
 
-  const addCommission = async (commission: Omit<CommercialProduitCommission, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addCommission = async (commission: Omit<CommercialProduitCommission, 'id' | 'date_creation' | 'date_modification'>) => {
     try {
-      const docRef = await addDoc(collection(db, 'commercial_produit_commission'), {
+      const docRef = await addDoc(collection(db, 'produits_commissions'), {
         ...commission,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        date_creation: serverTimestamp(),
+        date_modification: serverTimestamp(),
       });
       return docRef.id;
     } catch (e) {
+      console.error('Erreur addCommission:', e);
       throw new Error('Erreur lors de l\'ajout de la commission');
     }
   };
 
   const updateCommission = async (id: string, updates: Partial<CommercialProduitCommission>) => {
     try {
-      await updateDoc(doc(db, 'commercial_produit_commission', id), {
+      await updateDoc(doc(db, 'produits_commissions', id), {
         ...updates,
-        updatedAt: serverTimestamp(),
+        date_modification: serverTimestamp(),
       });
     } catch (e) {
+      console.error('Erreur updateCommission:', e);
       throw new Error('Erreur lors de la mise à jour de la commission');
     }
   };
 
   const deleteCommission = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'commercial_produit_commission', id));
+      await deleteDoc(doc(db, 'produits_commissions', id));
     } catch (e) {
+      console.error('Erreur deleteCommission:', e);
       throw new Error('Erreur lors de la suppression de la commission');
     }
   };

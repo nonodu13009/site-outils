@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHouse } from '@fortawesome/free-solid-svg-icons';
 import { usePathname } from 'next/navigation';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { faBuilding } from '@fortawesome/free-solid-svg-icons';
+import { faBuilding, faCogs } from '@fortawesome/free-solid-svg-icons';
 
 export const Sidebar = () => {
   const pathname = usePathname();
@@ -28,6 +28,7 @@ export const Sidebar = () => {
       </Link>
       {/* Bouton Compagnie (admin uniquement) */}
       {profile?.role === 'administrateur' && (
+        <>
         <Link href="/dashboard/compagnies">
           <span
             className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 cursor-pointer
@@ -37,6 +38,17 @@ export const Sidebar = () => {
             <span className="text-xs font-medium">Compagnie</span>
           </span>
         </Link>
+          {/* Bouton Administrateur */}
+          <Link href="/dashboard/produits">
+            <span
+              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 cursor-pointer
+                ${pathname === '/dashboard/produits' ? 'bg-blue-50 text-blue-600 shadow-md' : 'text-gray-400 hover:bg-blue-50 hover:text-blue-600'}`}
+            >
+              <FontAwesomeIcon icon={faCogs} className="text-2xl mb-1" />
+              <span className="text-xs font-medium">Admin commercial</span>
+            </span>
+          </Link>
+        </>
       )}
     </aside>
   );
