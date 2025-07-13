@@ -280,10 +280,7 @@
   background: #fff;
 }
 
-::placeholder {
-  color: #b0b0b8;
-  opacity: 1;
-}
+/* ::placeholder supprimé : déplacer dans globals.css */
 
 .cancelBtn {
   background: #f5f5f7;
