@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faCheckCircle, faTimesCircle, faCheck, faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { PremiumModal } from "@/components/PremiumModal";
 import { ToggleSwitch } from '@/components/ToggleSwitch';
+import Link from "next/link";
 
 export default function ProduitsPage() {
   const { profile, loading: profileLoading } = useUserProfile();
@@ -239,6 +240,7 @@ export default function ProduitsPage() {
               <h1 style={{ fontSize: "2.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em", lineHeight: 1.1 }}>Gestion des produits & commissions</h1>
               <p style={{ fontSize: "1.1rem", color: "#86868b", margin: 0, fontWeight: 400 }}>Administrez dynamiquement les produits et barèmes de commission</p>
             </div>
+
             <button
               style={{ background: "#007aff", color: "#fff", border: "none", borderRadius: 12, padding: "1rem 2rem", fontSize: "1.1rem", fontWeight: 600, boxShadow: "0 2px 12px rgba(0,122,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", gap: ".7rem", transition: "background 0.18s, box-shadow 0.18s", marginLeft: "auto" }}
               onClick={() => setModalOpen(true)}

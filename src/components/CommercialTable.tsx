@@ -5,6 +5,7 @@ import styles from './CommercialTable.module.css';
 import { FaBolt, FaCar, FaHeartbeat, FaStar, FaRegEye } from 'react-icons/fa';
 import { PremiumModal } from './PremiumModal';
 import { useCompagnies } from '@/hooks/useCompagnies';
+import { useProduitsCommissions } from '@/hooks/useProduitsCommissions';
 
 export interface CommercialData {
   id: string;
@@ -53,20 +54,7 @@ const columnOrder: (keyof Omit<CommercialData, 'id' | 'ca_mensuel'>)[] = [
   'notes',
 ];
 
-// Liste des produits pour AN
-const produitsAN = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'moto', label: 'Moto' },
-  { value: 'nop50eur', label: 'NOP 50€' },
-  { value: 'ird_part', label: 'IRD Part' },
-  { value: 'ird_pro', label: 'IRD Pro' },
-  { value: 'pj_part', label: 'PJ Part' },
-  { value: 'pj_pro', label: 'PJ Pro' },
-  { value: 'sante', label: 'Santé' },
-  { value: 'prev', label: 'Prévoyance' },
-  { value: 'vie_pp', label: 'Vie PP' },
-  { value: 'vie_pu', label: 'Vie PU' },
-];
+// Supprimer la déclaration de produitsAN
 
 // Mapping process -> couleur
 const processColors: Record<string, string> = {
@@ -106,6 +94,7 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
   const [noteToRead, setNoteToRead] = useState<string | null>(null);
   const [readNoteOpen, setReadNoteOpen] = useState(false);
   const { compagnies, loading: loadingCompagnies, error: errorCompagnies } = useCompagnies();
+  const { produits, loading: loadingProduits } = useProduitsCommissions();
 
   // Gestion du tri avec effet "souligné" sur l'en-tête actif
   const handleSort = (field: keyof CommercialData) => {
@@ -171,34 +160,27 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
     }));
   };
 
-  // Calcul dynamique commission potentielle (pour AN)
-  const computeCommission = () => {
-    if (selectedProcess !== 'AN') return '';
-    const produit = form.produit;
-    const ca = typeof form.ca_vl === 'number' ? form.ca_vl : 0;
-    switch (produit) {
-      case 'auto':
-      case 'moto':
-      case 'nop50eur':
-        return 10;
-      case 'ird_part':
-        return 20;
-      case 'ird_pro':
-        if (ca <= 999) return 20;
-        return 20 + 10 * Math.floor((ca - 999) / 1000);
-      case 'pj_part':
-      case 'pj_pro':
-        return 30;
-      case 'sante':
-      case 'prev':
-        return 50;
-      case 'vie_pp':
-        return 50;
-      case 'vie_pu':
-        return Math.round(ca * 0.01);
-      default:
-        return '';
+  // Fonction pour calculer la commission potentielle selon le produit Firestore
+  const selectedProduit = produits.find(p => p.nom === form.produit);
+  const calculerCommissionPotentielle = () => {
+    if (!selectedProduit) return '';
+    const type = selectedProduit.type_commission;
+    const commission = selectedProduit.commission || {};
+    const ca = Number(form.ca_vl) || 0;
+    if (type === 'fixe') {
+      return commission.montant || 0;
     }
+    if (type === 'variable') {
+      return Math.round((commission.pourcentage || 0) * ca / 100);
+    }
+    if (type === 'progressive') {
+      const base = commission.base || 0;
+      const tranche = commission.tranche_supplementaire || 0;
+      const seuil = commission.seuil_tranche || 1000;
+      if (ca <= seuil) return base;
+      return base + Math.floor((ca - seuil) / seuil) * tranche;
+    }
+    return '';
   };
 
   // Ajout local d'un contrat à la validation de la modale
@@ -217,7 +199,7 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
       compagnie: form.compagnie || '',
       ca_vl: typeof form.ca_vl === 'number' ? form.ca_vl : 0,
       ca_mensuel: 0,
-      comm_potentielle: Number(computeCommission()) || 0,
+      comm_potentielle: Number(calculerCommissionPotentielle()) || 0,
       notes: form.notes || '',
     };
     setLocalRows((prev) => [newRow, ...prev]);
@@ -345,9 +327,13 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                     required
                   >
                     <option value="">Sélectionner un produit</option>
-                    {produitsAN.map(p => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
+                    {loadingProduits ? (
+                      <option disabled>Chargement...</option>
+                    ) : (
+                      produits.map(p => (
+                        <option key={p.id} value={p.nom}>{p.nom}</option>
+                      ))
+                    )}
                   </select>
                 </div>
                 <div className={styles.PremiumModal_formGroup}>
@@ -382,6 +368,16 @@ export function CommercialTable({ data, loading = false }: CommercialTableProps)
                     className={styles.input}
                     min={0}
                     required
+                  />
+                </div>
+                {/* Champ Commission potentielle (calculé automatiquement) */}
+                <div className={styles.PremiumModal_formGroup}>
+                  <label className={styles.label}>Commission potentielle (€)</label>
+                  <input
+                    type="text"
+                    value={calculerCommissionPotentielle()}
+                    readOnly
+                    className={styles.input}
                   />
                 </div>
               </>

@@ -18,7 +18,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="flex flex-1 w-full max-w-screen-2xl mx-auto">
         {/* Sidebar sous le header, prend toute la hauteur */}
         <Sidebar />
-        <main className="flex-1 p-8 flex flex-col items-center justify-center">
+        <main className="flex-1 p-2 flex flex-col items-center">
           {children}
         </main>
       </div>

@@ -7,6 +7,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useRouter } from 'next/navigation';
 import styles from './compagnies.module.css';
 import Link from 'next/link';
+import { DashboardLayout } from '@/components/DashboardLayout';
 
 interface Company {
   id: string;
@@ -171,47 +172,50 @@ export default function CompagniesPage() {
 
   if (profileLoading) {
     return (
+      <DashboardLayout>
       <div className={styles.container}>
         <div className={styles.loading}>
           <div className={styles.spinner}></div>
           <p>Chargement du profil...</p>
         </div>
       </div>
+      </DashboardLayout>
     );
   }
 
   if (!profile || profile.role !== 'administrateur') {
     return (
+      <DashboardLayout>
       <div className={styles.container}>
         <div className={styles.accessDenied}>
           <h2>Accès refusé</h2>
           <p>Vous n'avez pas les permissions nécessaires pour accéder à cette page.</p>
         </div>
       </div>
+      </DashboardLayout>
     );
   }
 
   if (loading) {
     return (
+      <DashboardLayout>
       <div className={styles.container}>
         <div className={styles.loading}>
           <div className={styles.spinner}></div>
           <p>Chargement des compagnies...</p>
         </div>
       </div>
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>Gestion des Compagnies</h1>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link href="/dashboard">
-            <button className={styles.dashboardButton} title="Retour au dashboard">
-              <i className="fas fa-house"></i> Dashboard
-            </button>
-          </Link>
+            {/* Suppression du bouton Dashboard */}
           <button 
             className={styles.addButton}
             onClick={() => setShowAddForm(true)}
@@ -248,11 +252,11 @@ export default function CompagniesPage() {
           <div className={styles.formGroup}>
             <label htmlFor="site">Site internet</label>
             <input
-              type="url"
+                type="text"
               id="site"
               value={formData.site}
               onChange={(e) => setFormData(prev => ({ ...prev, site: e.target.value }))}
-              placeholder="https://..."
+                placeholder="Site internet"
             />
           </div>
           <div className={styles.formGroup}>
@@ -332,7 +336,7 @@ export default function CompagniesPage() {
                 <td>
                   {editingId === company.id ? (
                     <input
-                      type="url"
+                        type="text"
                       value={company.site}
                       onChange={(e) => {
                         const updatedCompanies = companies.map(c => 
@@ -453,5 +457,6 @@ export default function CompagniesPage() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 } 
